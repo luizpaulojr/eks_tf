@@ -1,0 +1,7 @@
+*.hcl
+*.zip
+*.terraform
+*.hcl
+*.tfstate
+*.backup
+*.pem
