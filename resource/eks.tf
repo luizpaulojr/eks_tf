@@ -6,8 +6,10 @@ module "eks" {
   source          = "../terraform-aws-eks-20.24.0"
   cluster_name    = "eks-cluster"
   cluster_version = "1.30"                                                   # Update to your desired Kubernetes version
-  subnet_ids      = ["subnet-0363ae174228f5be6", "subnet-07e8f2dba6612aede"] # Provide your subnet IDs
   vpc_id          = "vpc-030eba1ad19d72ea5"                                  # Provide your VPC ID
+  cluster_security_group_id = #Validar possíbilidade de usar sg já existente 
+  cluster_additional_security_group_ids = ["sg-020b1cd96131a4adc"]
+  control_plane_subnet_ids = ["subnet-0363ae174228f5be6", "subnet-07e8f2dba6612aede"]
 
   eks_managed_node_groups = {
     node_group_1 = {
