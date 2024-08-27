@@ -23,13 +23,13 @@ variable "prefix_separator" {
 variable "cluster_name" {
   description = "Name of the EKS cluster"
   type        = string
-  default     = "eks-default"
+  default     = ""
 }
 
 variable "cluster_version" {
   description = "Kubernetes `<major>.<minor>` version to use for the EKS cluster (i.e.: `1.27`)"
   type        = string
-  default     = "1.30"
+  default     = null
 }
 
 variable "cluster_enabled_log_types" {
@@ -53,19 +53,19 @@ variable "cluster_upgrade_policy" {
 variable "cluster_additional_security_group_ids" {
   description = "List of additional, externally created security group IDs to attach to the cluster control plane"
   type        = list(string)
-  default     = ["sg-020b1cd96131a4adc"]
+  default     = []
 }
 
 variable "control_plane_subnet_ids" {
   description = "A list of subnet IDs where the EKS cluster control plane (ENIs) will be provisioned. Used for expanding the pool of subnets used by nodes/node groups without replacing the EKS control plane"
   type        = list(string)
-  default     = ["subnet-0363ae174228f5be6", "subnet-07e8f2dba6612aede"]
+  default     = []
 }
 
 variable "subnet_ids" {
   description = "A list of subnet IDs where the nodes/node groups will be provisioned. If `control_plane_subnet_ids` is not provided, the EKS cluster control plane (ENIs) will be provisioned in these subnets"
   type        = list(string)
-  default     = ["subnet-0363ae174228f5be6", "subnet-07e8f2dba6612aede"]
+  default     = []
 }
 
 variable "cluster_endpoint_private_access" {
@@ -77,7 +77,7 @@ variable "cluster_endpoint_private_access" {
 variable "cluster_endpoint_public_access" {
   description = "Indicates whether or not the Amazon EKS public API server endpoint is enabled"
   type        = bool
-  default     = true
+  default     = false
 }
 
 variable "cluster_endpoint_public_access_cidrs" {
@@ -281,19 +281,19 @@ variable "cloudwatch_log_group_tags" {
 variable "create_cluster_security_group" {
   description = "Determines if a security group is created for the cluster. Note: the EKS service creates a primary security group for the cluster by default"
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "cluster_security_group_id" {
   description = "Existing security group ID to be attached to the cluster"
   type        = string
-  default     = "sg-020b1cd96131a4adc"
+  default     = ""
 }
 
 variable "vpc_id" {
   description = "ID of the VPC where the cluster security group will be provisioned"
   type        = string
-  default     = "vpc-030eba1ad19d72ea5"
+  default     = ""
 }
 
 variable "cluster_security_group_name" {
@@ -343,13 +343,13 @@ variable "create_cni_ipv6_iam_policy" {
 variable "create_node_security_group" {
   description = "Determines whether to create a security group for the node groups or use the existing `node_security_group_id`"
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "node_security_group_id" {
   description = "ID of an existing security group to attach to the node groups created"
   type        = string
-  default     = "sg-020b1cd96131a4adc"
+  default     = ""
 }
 
 variable "node_security_group_name" {
@@ -581,23 +581,7 @@ variable "self_managed_node_group_defaults" {
 variable "eks_managed_node_groups" {
   description = "Map of EKS managed node group definitions to create"
   type        = any
-  default     = {
-    # "node_group_1" = {
-    #   node_group_name = "example-node-group-1"
-    #   instance_type   = "t3.small"
-    #   subnet_ids      = ["subnet-0363ae174228f5be6"]
-    #   disk_size       = "11"
-    #   desired_capacity = 1
-    #   min_size         = 1
-    #   max_size         = 2
-    # }
-    # "node_group_2" = {
-    #   node_group_name = "example-node-group-2"
-    #   instance_type   = "t3.small"
-    #   desired_capacity = 1
-    #   min_size         = 1
-    #   max_size         = 2
-    # }
+  default     = {}
   }
 }
 
