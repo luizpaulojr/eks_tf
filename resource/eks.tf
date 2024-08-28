@@ -3,7 +3,7 @@ provider "aws" {
 }
 
 module "eks" {
-  source                                   = "../terraform-aws-eks-20.24.0"
+  source                                   = "../tf-module-aws-eks"
   cluster_name                             = "eks-cluster"
   cluster_version                          = "1.30"                                                   # Update to your desired Kubernetes version
   vpc_id                                   = "vpc-0abc1234de5f67890"                                  # Provide your VPC ID
