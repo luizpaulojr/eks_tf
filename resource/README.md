@@ -1,1 +1,13 @@
-# eks_tf
+##Código terraform para subir um cluster Kubernetes na AWS EKS
+
+TTTTTTTTTTTTTT   FFFFFFFFFFFFFF
+     TTTT        FFFF
+     TTTT        FFFFFFFF
+     TTTT        FFFF
+     TTTT        FFFF
+
+EEEEEEEEEEEE   KKKK    KKKK   SSSSSSSSSSS
+EEEE           KKKK   KKKK    SSSS
+EEEEEEEEEEEE   KKKKKKKKKK     SSSSSSSSSSS
+EEEE           KKKK   KKKK           SSSS
+EEEEEEEEEEEE   KKKK    KKKK   SSSSSSSSSSS
