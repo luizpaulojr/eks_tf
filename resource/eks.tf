@@ -15,9 +15,9 @@ module "eks" {
 
   eks_managed_node_groups = {
     node_group_1 = {
-      desired_capacity           = 1
-      max_capacity               = 3
-      min_capacity               = 1
+      desired_size               = 0
+      max_size                   = 2
+      min_size                   = 0
       instance_types             = ["t3.medium"] # Choose the instance type according to your needs
       subnet_ids                 = ["subnet-0ab1234cd567890ef"]
       use_name_prefix            = false
@@ -29,9 +29,9 @@ module "eks" {
       }
     }
     node_group_2 = {
-      desired_capacity = 1
-      max_capacity     = 2
-      min_capacity     = 1
+      desired_size     = 0
+      max_siz          = 2
+      min_size         = 0
       instance_types   = ["t3.small"] # Choose the instance type according to your needs
       subnet_ids       = ["subnet-0abcd1234ef567890"]
       use_name_prefix  = false
