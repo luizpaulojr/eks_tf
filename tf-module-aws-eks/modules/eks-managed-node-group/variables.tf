@@ -347,19 +347,16 @@ variable "placement_group_az" {
 variable "min_size" {
   description = "Minimum number of instances/nodes"
   type        = number
-  default     = 0
 }
 
 variable "max_size" {
   description = "Maximum number of instances/nodes"
   type        = number
-  default     = 3
 }
 
 variable "desired_size" {
   description = "Desired number of instances/nodes"
   type        = number
-  default     = 1
 }
 
 variable "name" {
