@@ -3,13 +3,12 @@ provider "aws" {
 }
 
 module "eks" {
-  ami_type                                 = "BOTTLEROCKET_x86_64"
   source                                   = "../tf-module-aws-eks"
   cluster_name                             = "eks-cluster"
   cluster_version                          = "1.33"                                                   # Update to your desired Kubernetes version
   vpc_id                                   = "vpc-0abc1234de5f67890"                                  # Provide your VPC ID
   control_plane_subnet_ids                 = ["subnet-0ab1234cd567890ef", "subnet-0abcd1234ef567890"]
-  #cluster_additional_security_group_ids    = ["sg-0abc1234def567890"]
+  #cluster_additional_security_group_ids   = ["sg-0abc1234def567890"]
   create_cluster_security_group            = true
   cluster_endpoint_public_access           = true
   enable_cluster_creator_admin_permissions = true 
@@ -32,13 +31,17 @@ module "eks" {
       }
     }
     node_group_2 = {
-      desired_size     = 1
-      max_siz          = 2
-      min_size         = 1
-      instance_types   = ["t3.small"] # Choose the instance type according to your needs
-      subnet_ids       = ["subnet-0ab1234cd567890ef", "subnet-0abcd1234ef567890"]
-      use_name_prefix  = false
-      block_device_mappings = [
+      ami_type                     = "BOTTLEROCKET_x86_64"
+      iam_role_additional_policies = {
+        AmazonSSMManagedInstanceCore = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+      }
+      desired_size                 = 1
+      max_siz                      = 2
+      min_size                     = 1
+      instance_types               = ["t3.small"] # Choose the instance type according to your needs
+      subnet_ids                   = ["subnet-0ab1234cd567890ef", "subnet-0abcd1234ef567890"]
+      use_name_prefix              = false
+      block_device_mappings        = [
         {
           device_name = "/dev/xvdb" # Root volume
           ebs = {
