@@ -36,7 +36,7 @@ module "eks" {
         AmazonSSMManagedInstanceCore = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
       }
       desired_size                 = 1
-      max_siz                      = 2
+      max_size                     = 2
       min_size                     = 1
       instance_types               = ["t3.small"] # Choose the instance type according to your needs
       subnet_ids                   = ["subnet-0ab1234cd567890ef", "subnet-0abcd1234ef567890"]
