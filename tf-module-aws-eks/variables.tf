@@ -595,3 +595,47 @@ variable "putin_khuylo" {
   type        = bool
   default     = true
 }
+
+################################################################################
+# EKS Karpenter
+################################################################################
+
+# karpenter
+variable "karpenter_enable" {
+  type    = string
+  default = null
+}
+
+variable "karpenter_version" {
+  type    = string
+  default = null
+}
+
+variable "disk_size" {
+  type    = number
+  default = null
+}
+
+variable "disk_iops" {
+  type    = number
+  default = null
+}
+
+variable "capacity_type" {
+  type    = string
+  default = null
+}
+
+variable "region" {
+  type    = string
+  default = null
+}
+
+variable "subnets_filter_name" {
+  type    = string
+  default = null
+}
+variable "sg_filter_name" {
+  type    = string
+  default = null
+}

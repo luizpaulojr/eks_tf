@@ -6,6 +6,10 @@ terraform {
       source  = "hashicorp/aws"
       version = ">= 5.61"
     }
+    helm = {
+      source  = "hashicorp/helm"
+      version = "~> 2.0"
+    }    
     tls = {
       source  = "hashicorp/tls"
       version = ">= 3.0"
@@ -13,6 +17,10 @@ terraform {
     time = {
       source  = "hashicorp/time"
       version = ">= 0.9"
+    }
+    kubectl = {
+      source  = "gavinbunney/kubectl"
+      version = ">= 1.14.0"
     }
   }
 }
