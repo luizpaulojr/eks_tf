@@ -621,7 +621,12 @@ variable "disk_iops" {
   default = null
 }
 
-variable "capacity_type" {
+variable "capacity_type_tools" {
+  type    = string
+  default = null
+}
+
+variable "capacity_type_app" {
   type    = string
   default = null
 }

@@ -1,4 +1,4 @@
-############################################## DATA ##############################################
+############################################## Data ##############################################
 data "aws_ami" "eks_default_bottlerocket" {
   most_recent = true
   owners      = ["amazon"]
@@ -10,16 +10,6 @@ data "aws_ami" "eks_default_bottlerocket" {
 
 data "aws_eks_cluster_auth" "this" {
   name = aws_eks_cluster.this[0].name
-}
-
-provider "helm" {
-  alias = "eks"
-
-  kubernetes {
-    host                   = aws_eks_cluster.this[0].endpoint
-    cluster_ca_certificate = base64decode(aws_eks_cluster.this[0].certificate_authority[0].data)
-    token                  = data.aws_eks_cluster_auth.this.token
-  }
 }
 
 ############################################## Locals ##############################################
@@ -34,6 +24,16 @@ locals {
 }
 
 ############################################## Helm ##############################################
+provider "helm" {
+  alias = "eks"
+
+  kubernetes {
+    host                   = aws_eks_cluster.this[0].endpoint
+    cluster_ca_certificate = base64decode(aws_eks_cluster.this[0].certificate_authority[0].data)
+    token                  = data.aws_eks_cluster_auth.this.token
+  }
+}
+
 resource "helm_release" "karpenter" {
   provider = helm.eks 
   count      = var.karpenter_enable ? 1 : 0
@@ -91,8 +91,10 @@ resource "helm_release" "karpenter" {
     value = "false"
   }
   depends_on = [
-  aws_eks_cluster.this
+    aws_eks_cluster.this,
+    module.fargate_profile["0"].aws_eks_fargate_profile
 ]
+
 }
 
 ############################################## AWS Role for Karpenter Node ##############################################
@@ -111,6 +113,15 @@ resource "aws_iam_role" "eks_karpenter_role_node" {
       }
     ]
   })
+}
+
+resource "aws_eks_access_entry" "karpenter_node_access" {
+  cluster_name      = var.cluster_name
+  principal_arn     = aws_iam_role.eks_karpenter_role_node[0].arn
+  type              = "EC2_LINUX"
+  depends_on = [
+    aws_eks_cluster.this
+]
 }
 
 ############################################## Attaching required AWS Policies for Karpenter Node Role ##############################################
@@ -336,99 +347,217 @@ resource "kubectl_manifest" "karpenter_node_class" {
 }
 
 ############################################## Node Pools ##############################################
+locals {
+  karpenter_node_pool_tools_spec_base = {
+    apiVersion = "karpenter.sh/v1"
+    kind       = "NodePool"
+    metadata = {
+      name = "tools"
+      # não coloque annotation aqui ainda
+    }
+    spec = {
+      template = {
+        metadata = {
+          labels = {
+            workload = "tools"
+          }
+        }
+        spec = {
+          nodeClassRef = {
+            name  = "bottlerocket"
+            kind  = "EC2NodeClass"
+            group = "karpenter.k8s.aws"
+          }
+          requirements = [
+            {
+              key      = "karpenter.k8s.aws/instance-category"
+              operator = "In"
+              values   = ["t", "c", "m"]
+            },
+            {
+              key      = "karpenter.k8s.aws/instance-cpu"
+              operator = "In"
+              values   = ["4", "8"]
+            },
+            {
+              key      = "karpenter.k8s.aws/instance-hypervisor"
+              operator = "In"
+              values   = ["nitro"]
+            },
+            {
+              key      = "karpenter.k8s.aws/instance-generation"
+              operator = "Gt"
+              values   = ["2"]
+            },
+            {
+              key      = "kubernetes.io/arch"
+              operator = "In"
+              values   = ["amd64"]
+            },
+            {
+              key      = "karpenter.sh/capacity-type"
+              operator = "In"
+              values   = [var.capacity_type_tools]
+            }
+          ]
+        }
+      }
+      limits = {
+        cpu = 1000
+      }
+      disruption = {
+        consolidationPolicy = "WhenEmptyOrUnderutilized"
+        consolidateAfter    = "30s"
+      }
+    }
+  }
+
+  # Agora calcule o hash com base no spec base
+  karpenter_node_pool_tools_hash = sha1(join("", [
+    var.capacity_type_tools,
+    jsonencode(local.karpenter_node_pool_tools_spec_base.spec.template.spec),
+    jsonencode(local.karpenter_node_pool_tools_spec_base.spec.limits),
+    jsonencode(local.karpenter_node_pool_tools_spec_base.spec.disruption),
+  ]))
+
+  # Agora monte o spec final incluindo a annotation
+  karpenter_node_pool_tools_spec = merge(
+    local.karpenter_node_pool_tools_spec_base,
+    {
+      metadata = {
+        name = local.karpenter_node_pool_tools_spec_base.metadata.name
+        annotations = {
+          "terraform.io/hash" = local.karpenter_node_pool_tools_hash
+        }
+      }
+    }
+  )
+
+  karpenter_node_pool_tools_yaml = yamlencode(local.karpenter_node_pool_tools_spec)
+}
+
 
 resource "kubectl_manifest" "karpenter_node_pool_tools" {
   count     = var.karpenter_enable ? 1 : 0
-  yaml_body = <<-YAML
-    apiVersion: karpenter.sh/v1
-    kind: NodePool
-    metadata:
-      name: tools
-    spec:
-      template:
-        metadata:
-          labels:
-            workload: tools
-        spec:
-          nodeClassRef:
-            name: bottlerocket
-            kind: EC2NodeClass
-            group: karpenter.k8s.aws
-          requirements:
-            - key: "karpenter.k8s.aws/instance-category"
-              operator: In
-              values: ["t", "c", "m"]
-            - key: "karpenter.k8s.aws/instance-cpu"
-              operator: In
-              values: ["1", "2", "4", "8"]
-            - key: "karpenter.k8s.aws/instance-hypervisor"
-              operator: In
-              values: ["nitro"]
-            - key: "karpenter.k8s.aws/instance-generation"
-              operator: Gt
-              values: ["2"]
-            - key: "kubernetes.io/arch"
-              operator: In
-              values: ["amd64"]
-            - key: "karpenter.sh/capacity-type"
-              operator: In
-              values: ["${var.capacity_type}"]
-      limits:
-        cpu: 1000
-      disruption:
-        consolidationPolicy: WhenEmptyOrUnderutilized
-        consolidateAfter: 30s
-  YAML
+  yaml_body = local.karpenter_node_pool_tools_yaml
 
   depends_on = [
     kubectl_manifest.karpenter_node_class
   ]
 }
+
+locals {
+  karpenter_node_pool_app_spec_base = {
+    apiVersion = "karpenter.sh/v1"
+    kind       = "NodePool"
+    metadata = {
+      name = "app"
+      # não coloque annotation aqui ainda
+    }
+    spec = {
+      template = {
+        metadata = {
+          labels = {
+            workload = "app"
+          }
+        }
+        spec = {
+          nodeClassRef = {
+            name  = "bottlerocket"
+            kind  = "EC2NodeClass"
+            group = "karpenter.k8s.aws"
+          }
+          requirements = [
+            {
+              key      = "karpenter.k8s.aws/instance-category"
+              operator = "In"
+              values   = ["t", "c", "m"]
+            },
+            {
+              key      = "karpenter.k8s.aws/instance-cpu"
+              operator = "In"
+              values   = ["4", "8"]
+            },
+            {
+              key      = "karpenter.k8s.aws/instance-hypervisor"
+              operator = "In"
+              values   = ["nitro"]
+            },
+            {
+              key      = "karpenter.k8s.aws/instance-generation"
+              operator = "Gt"
+              values   = ["2"]
+            },
+            {
+              key      = "kubernetes.io/arch"
+              operator = "In"
+              values   = ["amd64"]
+            },
+            {
+              key      = "karpenter.sh/capacity-type"
+              operator = "In"
+              values   = [var.capacity_type_app]
+            }
+          ]
+        }
+      }
+      limits = {
+        cpu = 1000
+      }
+      disruption = {
+        consolidationPolicy = "WhenEmptyOrUnderutilized"
+        consolidateAfter    = "30s"
+      }
+    }
+  }
+
+  # Agora calcule o hash com base no spec base
+  karpenter_node_pool_app_hash = sha1(join("", [
+    var.capacity_type_app,
+    jsonencode(local.karpenter_node_pool_app_spec_base.spec.template.spec),
+    jsonencode(local.karpenter_node_pool_app_spec_base.spec.limits),
+    jsonencode(local.karpenter_node_pool_app_spec_base.spec.disruption),
+  ]))
+
+  # Agora monte o spec final incluindo a annotation
+  karpenter_node_pool_app_spec = merge(
+    local.karpenter_node_pool_app_spec_base,
+    {
+      metadata = {
+        name = local.karpenter_node_pool_app_spec_base.metadata.name
+        annotations = {
+          "terraform.io/hash" = local.karpenter_node_pool_app_hash
+        }
+      }
+    }
+  )
+
+  karpenter_node_pool_app_yaml = yamlencode(local.karpenter_node_pool_app_spec)
+}
+
 
 resource "kubectl_manifest" "karpenter_node_pool_app" {
   count     = var.karpenter_enable ? 1 : 0
-  yaml_body = <<-YAML
-    apiVersion: karpenter.sh/v1
-    kind: NodePool
-    metadata:
-      name: app
-    spec:
-      template:
-        metadata:
-          labels:
-            workload: app
-        spec:
-          nodeClassRef:
-            name: bottlerocket
-            kind: EC2NodeClass
-            group: karpenter.k8s.aws
-          requirements:
-            - key: "karpenter.k8s.aws/instance-category"
-              operator: In
-              values: ["t", "c", "m"]
-            - key: "karpenter.k8s.aws/instance-cpu"
-              operator: In
-              values: ["4", "8"]
-            - key: "karpenter.k8s.aws/instance-hypervisor"
-              operator: In
-              values: ["nitro"]
-            - key: "karpenter.k8s.aws/instance-generation"
-              operator: Gt
-              values: ["2"]
-            - key: "kubernetes.io/arch"
-              operator: In
-              values: ["amd64"]
-            - key: "karpenter.sh/capacity-type"
-              operator: In
-              values: ["${var.capacity_type}"]
-      limits:
-        cpu: 1000
-      disruption:
-        consolidationPolicy: WhenEmptyOrUnderutilized
-        consolidateAfter: 30s
-  YAML
+  yaml_body = local.karpenter_node_pool_app_yaml
 
   depends_on = [
     kubectl_manifest.karpenter_node_class
   ]
 }
+
+
+############################################ Rollout Coredns ##############################################
+resource "null_resource" "restart_coredns" {
+  provisioner "local-exec" {
+    command = "kubectl rollout restart deployment coredns -n kube-system"
+  }
+ 
+  triggers = {
+    always_run = timestamp()
+  }
+ 
+  depends_on = [
+    module.fargate_profile["0"].aws_eks_fargate_profile
+  ]
+}
+
